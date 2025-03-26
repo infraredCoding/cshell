@@ -19,10 +19,6 @@ void parse_input_tokens(char* input, char** args){
 
 void execute_command(char** args){
 
-  for(int i = 0; args[i] != NULL; i++) {
-    printf("%s\n", args[i]);
-  }
-
   pid_t pid = fork();
   
   if(pid == -1) {
