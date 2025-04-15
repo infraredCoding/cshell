@@ -8,6 +8,10 @@
 #include <fcntl.h>
 
 
+void signal_handler(int sig){
+  printf("\nsh>");
+  fflush(stdout);
+}
 
 void parse_input_tokens(char* input, char** args, char** input_file, char** output_file, int* append){
   char* token = strtok(input, " \t\n");
@@ -39,7 +43,7 @@ void parse_input_tokens(char* input, char** args, char** input_file, char** outp
   args[i] = NULL;
 }
 
-void execute_piped_commands(char* input_line){
+int execute_piped_commands(char* input_line){
   char* commands[20];
   int num_cmds = 0;
   char* token = strtok(input_line, "|");
@@ -97,39 +101,16 @@ void execute_piped_commands(char* input_line){
     close(pipe_fds[i]);
   }
 
+  int last_status = 0;
   for (int i = 0; i < num_cmds; i++) {
-    wait(NULL);
-  }
-}
-
-void execute_command(char** args, char* inp_file, char* out_file, int append){
-
-  pid_t pid = fork();
-  
-  if(pid == -1) {
-    perror("could not run command");
-    exit(EXIT_FAILURE);
-  } else if(pid == 0) {
-    // child
-    if (inp_file) {
-      int fd = open(inp_file, O_RDONLY);
-      dup2(fd, STDIN_FILENO);
-      close(fd);
-    }
-
-    if (out_file) {
-      int fd = open(out_file, O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC), 0644);
-      dup2(fd, STDOUT_FILENO);
-      close(fd);
-    }
-    if (execvp(args[0], args) != -1) {
-      perror("could not execute command");
-      exit(EXIT_FAILURE);
-    }
-  }else {
     int status;
-    waitpid(pid, &status, 0);
+    wait(&status);
+    if(i == num_cmds - 1){
+      last_status = status;
+    }
   }
+
+  return last_status;
 }
 
 int main() {
@@ -141,11 +122,15 @@ int main() {
 
   // emnei, shundor lage ig
   printf("Custom Shell Proj v0.1\n");
+
+  signal(SIGINT, signal_handler);
   
 
   // actual repl
   while(1) {
     printf("sh> ");
+    fflush(stdout);
+
     fgets(buffer, 1024, stdin);
 
     // exit command
@@ -153,8 +138,50 @@ int main() {
       break;
     }
 
-    execute_piped_commands(buffer);
+    char* sc_command = strtok(buffer, ";");
+    while(sc_command != NULL) {
+      int run_next = 1;
+      char* and_ptr;
+      char* rest = sc_command;
 
+      while((and_ptr = strstr(rest, "&&")) != NULL){
+        *and_ptr = '\0';
+        char* cmd = rest;
+        while(*cmd == ' ' || *cmd == '\t') cmd++;
+
+        if(*cmd != '\0' && run_next){
+          pid_t pid = fork();
+          if(pid == 0){
+            int status = execute_piped_commands(cmd);
+            exit(WEXITSTATUS(status));
+          }else{
+            int status;
+            waitpid(pid, &status, 0);
+            run_next = (WIFEXITED(status) && WEXITSTATUS(status) == 0);
+          }
+        }
+
+        rest = and_ptr + 2;
+      }
+
+      char* cmd = rest;
+      while(*cmd == ' ' || *cmd == '\t') cmd++;
+
+      if (*cmd != '\0' && run_next) {
+        pid_t pid = fork();
+        if (pid == 0) {
+          execute_piped_commands(cmd);
+          exit(0);
+        }else {
+          int status;
+          waitpid(pid, &status, 0);
+        }
+      }
+
+      sc_command = strtok(NULL, ";");
+
+    }
+    
   }
   return 0;
 }
