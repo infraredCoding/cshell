@@ -7,9 +7,10 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
+#define MAX_HISTORY 50
 
 void signal_handler(int sig){
-  printf("\nsh>");
+  printf("\nsh> ");
   fflush(stdout);
 }
 
@@ -120,6 +121,10 @@ int main() {
   char* input_file, *output_file;
   int append;
 
+  // history
+  char *cmd_history[MAX_HISTORY];
+  int history_count = 0;
+
   // emnei, shundor lage ig
   printf("Custom Shell Proj v0.1\n");
 
@@ -136,6 +141,28 @@ int main() {
     // exit command
     if (strncmp(buffer, "exit", 4) == 0) {
       break;
+    }
+    
+    // history command
+    if (strncmp(buffer, "history", 7) == 0) {
+      for (int i=0; i<history_count; i++) {
+        printf("%d. %s", i+1, cmd_history[i]);
+      }
+      continue;
+    }
+
+    if (buffer[0] == '\0') continue;
+
+    // if valid input, update history
+    // history is not persistent
+    if (strnlen(buffer, 1024) > 0){
+      // if the max lenght is reached, shift the array using memmove
+      if(history_count == MAX_HISTORY) {
+        free(cmd_history[0]);
+        memmove(&cmd_history[0], &cmd_history[1], sizeof(char*) * (MAX_HISTORY - 1));
+        history_count--;
+      }
+      cmd_history[history_count++] = strndup(buffer, 1024);
     }
 
     char* sc_command = strtok(buffer, ";");
