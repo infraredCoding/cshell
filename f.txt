@@ -1,6 +1,0 @@
-total 32
--rw-r--r-- 1 infrared infrared     0 Apr 13 17:13 f.txt
--rw-r--r-- 1 infrared infrared    24 Mar 26 06:13 Makefile
--rwxrwxr-x 1 infrared infrared 16688 Mar 26 14:45 sh
--rw-r--r-- 1 infrared infrared  2153 Mar 26 14:50 shell.c
--rw-r--r-- 1 infrared infrared     4 Mar 26 14:49 test.txt
